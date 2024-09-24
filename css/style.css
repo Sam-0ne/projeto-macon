@@ -1,0 +1,97 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    margin: 0;
+    padding: 0;
+}
+
+.login-container {
+    width: 400px;
+    margin: 100px auto;
+    padding: 20px;
+    background: #fff;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.login-container h2 {
+    margin-bottom: 20px;
+}
+
+.login-container input {
+    width: 90%;
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid #ccc;
+}
+
+.login-container button {
+    padding: 10px;
+    background: #007bff;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+}
+
+.top-bar {
+    background: #007bff;
+    color: #fff;
+    padding: 10px;
+    text-align: center;
+}
+
+.top-bar h2 {
+    display: inline-block;
+    margin: 0;
+}
+
+.top-bar form {
+    display: inline-block;
+    margin-left: 20px;
+}
+
+.top-bar input[type="text"] {
+    padding: 5px;
+}
+
+.top-bar button {
+    padding: 5px 10px;
+    background: #fff;
+    color: #007bff;
+    border: none;
+    cursor: pointer;
+}
+
+.top-bar a {
+    color: #fff;
+    margin-left: 20px;
+    text-decoration: none;
+}
+
+.search-results, .folder-list, .admin-actions {
+    width: 80%;
+    margin: 20px auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+table, th, td {
+    border: 1px solid #ccc;
+}
+
+th, td {
+    padding: 10px;
+    text-align: left;
+}
+
+.error {
+    color: red;
+}
+
+.admin-actions div {
+    margin-bottom: 15px;
+}
