@@ -7,8 +7,10 @@ if (!isLoggedIn()) {
 }
 
 $userID = $_SESSION['user_id'];
+$userName = $_SESSION['user_name'];
 $folders = getFoldersByUser($userID);
 
+// Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['return'])) {
         returnFolder($_POST['folderID'], $userID);
@@ -21,88 +23,33 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             addNewPasta($_POST['idCliente'], $_POST['armario']);
         }
     }
+    $folders = getFoldersByUser($userID);
     header('Location: folders.php');
     exit;
 }
 
-$searchResults = [];
-if (isset($_GET['search'])) {
-    $searchTerm = $_GET['search'];
-    $searchResults = searchFolders($searchTerm);
-}
 ?>
 
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Pastas</title>
+    <title>Macon Contabilidade - Pastas</title>
     <link rel="stylesheet" href="css/style.css">
     <script src="js/main.js"></script>
 </head>
 <body>
     <div class="top-bar">
-        <h2>Pastas Retiradas</h2>
-        <form action="folders.php" method="get">
+        <h1>Macon Contabilidade</h1>
+        <h2>Controle de Pastas</h2>
+        <form action="search.php" method="get">
             <input type="text" name="search" placeholder="Procurar Pasta, Cliente, etc.">
             <button type="submit">Pesquisar</button>
         </form>
         <a href="logout.php">Logout</a>
     </div>
     
-    <?php if ($searchResults): ?>
-        <div class="search-results">
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID da Pasta</th>
-                        <th>Nome do Cliente</th>
-                        <th>Status</th>
-                        <th>Ação</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($searchResults as $result): ?>
-                        <tr>
-                            <td><?= $result['ID_Pasta']; ?></td>
-                            <td><?= $result['Nome_Cliente']; ?></td>
-                            <td><?= $result['Status']; ?></td>
-                            <td>
-                                <?php if ($result['Status'] == 'Disponível'): ?>
-                                    <form action="folders.php" method="post">
-                                        <input type="hidden" name="folderID" value="<?= $result['ID_Pasta']; ?>">
-                                        <button type="submit" name="checkout">Retirar</button>
-                                    </form>
-                                <?php endif; ?>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-    <?php endif; ?>
-
-    <?php if (isAdmin()): ?>
-        <div class="admin-actions">
-            <h2>Admin Ações</h2>
-            <div>
-                <h3>Adicionar Cliente</h3>
-                <form action="folders.php" method="post" name="addClienteForm">
-                    <input type="text" name="nome" placeholder="Nome do Cliente" required>
-                    <input type="text" name="cpf" placeholder="CPF" required>
-                    <button type="submit" name="addCliente">Adicionar Cliente</button>
-                </form>
-            </div>
-            <div>
-                <h3>Adicionar Pasta</h3>
-                <form action="folders.php" method="post" name="addPastaForm">
-                    <input type="text" name="idCliente" placeholder="ID do Cliente" required>
-                    <input type="text" name="armario" placeholder="Armário" required>
-                    <button type="submit" name="addPasta">Adicionar Pasta</button>
-                </form>
-            </div>
-        </div>
-    <?php endif; ?>
+    <h3>Pastas retiradas por <?= $userName; ?></h3>
 
     <div class="folder-list">
         <table>

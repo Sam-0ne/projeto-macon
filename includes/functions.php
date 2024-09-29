@@ -33,25 +33,22 @@ function login($email, $password) {
     global $db;
 
     try {
-        $email = strtolower(trim($email)); // Standardize email
+        $email = strtolower(trim($email));
         $stmt = $db->prepare('SELECT * FROM Empregado WHERE email = ? LIMIT 1');
         $stmt->execute([$email]);
 
-        if ($stmt->rowCount() == 1) {
-            $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if (password_verify($password, $user['password'])) {
-                session_regenerate_id(true);
-
-                $_SESSION['user_id'] = $user['ID_Empregado'];
-                $_SESSION['user_name'] = $user['nome'];
-                $_SESSION['user_email'] = $user['email'];
-                $_SESSION['user_profile'] = $user['Perfil'];
-                return true;
-            }
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($user !== false && $password === $user['password']) {
+            session_regenerate_id(true);
+            $_SESSION['user_id'] = $user['ID_Empregado'];
+            $_SESSION['user_name'] = $user['nome'];
+            $_SESSION['user_email'] = $user['email'];
+            $_SESSION['user_profile'] = $user['Perfil'];
+            return true;
         }
     } catch (Exception $e) {
-        echo "Query failed: " . $e->getMessage();
+        echo "Falha na query: " . $e->getMessage();
     }
     return false;
 }
@@ -63,7 +60,7 @@ function logout() {
     exit();
 }
 
-function getFoldersByUser($userID) {
+function getFoldersByUser($userID) { 
     global $db;
 
     $stmt = $db->prepare('
@@ -71,10 +68,28 @@ function getFoldersByUser($userID) {
         FROM Pasta P
         JOIN Cliente C ON P.ID_Cliente = C.ID_Cliente
         JOIN Historico H ON P.ID_Ultimo_Evento = H.ID_Evento
-        WHERE H.ID_Empregado = ? AND H.Tipo_Evento = "RETIRADA"
+        WHERE H.ID_Empregado = ? AND H.Tipo_Evento = "RETIRADA" 
+        AND NOT EXISTS (
+            SELECT 1 FROM Historico H2
+            JOIN Pasta P2 ON H2.ID_Evento = P2.ID_Ultimo_Evento
+            WHERE H2.ID_Pasta = P.ID_Pasta AND H2.Tipo_Evento = "DEVOLVIDA"
+        )
     ');
     $stmt->execute([$userID]);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+
+function updateUltimoEvento($folderID) {
+    global $db;
+
+    $updateStmt = $db->prepare('
+        UPDATE Pasta SET ID_Ultimo_Evento = (
+            SELECT ID_Evento FROM Historico WHERE ID_Pasta = ? ORDER BY DataHora_Evento DESC LIMIT 1
+        )
+        WHERE ID_Pasta = ?
+    ');
+    $updateStmt->execute([$folderID, $folderID]);
 }
 
 function checkOutFolder($folderID, $userID) {
@@ -82,15 +97,11 @@ function checkOutFolder($folderID, $userID) {
 
     $stmt = $db->prepare('
         INSERT INTO Historico (ID_Pasta, ID_Cliente, ID_Empregado, Tipo_Evento, DataHora_Evento)
-        SELECT ID_Pasta, ID_Cliente, ?, "RETIRADA", NOW() FROM Pasta WHERE ID_Pasta = ?
+        SELECT ID_Pasta, ID_Cliente, ?, "RETIRADA", DATETIME("now") FROM Pasta WHERE ID_Pasta = ?
     ');
     $stmt->execute([$userID, $folderID]);
 
-    $updateStmt = $db->prepare('
-        UPDATE Pasta SET ID_Ultimo_Evento = (SELECT ID_Evento FROM Historico WHERE ID_Pasta = ? ORDER BY DataHora_Evento DESC LIMIT 1)
-        WHERE ID_Pasta = ?
-    ');
-    $updateStmt->execute([$folderID, $folderID]);
+    updateUltimoEvento($folderID);
 }
 
 function returnFolder($folderID, $userID) {
@@ -98,36 +109,34 @@ function returnFolder($folderID, $userID) {
 
     $stmt = $db->prepare('
         INSERT INTO Historico (ID_Pasta, ID_Cliente, ID_Empregado, Tipo_Evento, DataHora_Evento)
-        SELECT ID_Pasta, ID_Cliente, ?, "DEVOLVIDA", NOW() FROM Pasta WHERE ID_Pasta = ?
+        SELECT ID_Pasta, ID_Cliente, ?, "DEVOLVIDA", DATETIME("now") FROM Pasta WHERE ID_Pasta = ?
     ');
     $stmt->execute([$userID, $folderID]);
 
-    $updateStmt = $db->prepare('
-        UPDATE Pasta SET ID_Ultimo_Evento = (SELECT ID_Evento FROM Historico WHERE ID_Pasta = ? ORDER BY DataHora_Evento DESC LIMIT 1)
-        WHERE ID_Pasta = ?
-    ');
-    $updateStmt->execute([$folderID, $folderID]);
+    updateUltimoEvento($folderID);
 }
 
 function searchFolders($searchTerm) {
     global $db;
 
     $stmt = $db->prepare('
-        SELECT P.ID_Pasta, C.nome AS Nome_Cliente,
-        CASE
-            WHEN H.Tipo_Evento = "RETIRADA" THEN CONCAT("RETIRADA por ", E.nome, " em ", H.DataHora_Evento)
-            ELSE "Disponível"
-        END AS Status
+        SELECT P.ID_Pasta, C.nome AS Nome_Cliente, P.Armario,
+               H.DataHora_Evento AS Data_Hora_Retirada,
+               H.Tipo_Evento, H.ID_Empregado, E.nome AS Nome_Empregado
         FROM Pasta P
         JOIN Cliente C ON P.ID_Cliente = C.ID_Cliente
-        JOIN Historico H ON P.ID_Ultimo_Evento = H.ID_Evento
-        JOIN Empregado E ON H.ID_Empregado = E.ID_Empregado
-        WHERE P.ID_Pasta LIKE ? OR C.nome LIKE ? OR H.Tipo_Evento LIKE ?
+        LEFT JOIN Historico H ON P.ID_Ultimo_Evento = H.ID_Evento
+        LEFT JOIN Empregado E ON H.ID_Empregado = E.ID_Empregado
+        WHERE C.nome LIKE ? OR P.ID_Pasta LIKE ?
+        ORDER BY P.ID_Pasta ASC
     ');
-    $term = "%$searchTerm%";
-    $stmt->execute([$term, $term, $term]);
+    $stmt->execute(["%$searchTerm%", "%$searchTerm%"]);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
+
+
+
+
 
 function addNewCliente($nome, $cpf) {
     global $db;
